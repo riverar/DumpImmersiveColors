@@ -7,17 +7,16 @@ namespace DumpImmersiveColors
     class Program
     {
         [DllImport("uxtheme.dll", EntryPoint = "#95")]
-        internal static extern uint GetImmersiveColorFromColorSetEx(uint nColorSetIndex, uint colorType, bool fNoHighContrast, uint /* IMMERSIVE_HC_CACHE_MODE */ mode);
+        static extern uint GetImmersiveColorFromColorSetEx(uint nColorSetIndex, uint colorType, bool fNoHighContrast, uint /* IMMERSIVE_HC_CACHE_MODE */ mode);
 
         [DllImport("uxtheme.dll", EntryPoint = "#98")]
-        internal static extern uint GetImmersiveUserColorSetPreference(bool fForceReloadFromRegkey, bool __formal);
+        static extern uint GetImmersiveUserColorSetPreference(bool fForceReloadFromRegkey, bool __formal);
 
         [DllImport("uxtheme.dll", EntryPoint = "#100")]
-        public static extern IntPtr GetImmersiveColorNamedTypeByIndex(uint index);
+        static extern IntPtr GetImmersiveColorNamedTypeByIndex(uint index);
 
         public static Color FromAbgr(uint abgrValue)
         {
-
             var colorBytes = new byte[4];
             colorBytes[0] = (byte)((0xFF000000 & abgrValue) >> 24); // A
             colorBytes[1] = (byte)((0x00FF0000 & abgrValue) >> 16); // B

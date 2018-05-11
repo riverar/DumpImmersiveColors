@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Imaging;
+using System.Drawing.Text;
 using System.Runtime.InteropServices;
 
 namespace DumpImmersiveColors
@@ -15,7 +18,7 @@ namespace DumpImmersiveColors
         [DllImport("uxtheme.dll", EntryPoint = "#100")]
         static extern IntPtr GetImmersiveColorNamedTypeByIndex(uint index);
 
-        public static Color FromAbgr(uint abgrValue)
+        public static Color ColorFromAbgr(uint abgrValue)
         {
             var colorBytes = new byte[4];
             colorBytes[0] = (byte)((0xFF000000 & abgrValue) >> 24); // A
@@ -26,9 +29,11 @@ namespace DumpImmersiveColors
             return Color.FromArgb(colorBytes[0], colorBytes[3], colorBytes[2], colorBytes[1]);
         }
 
-        static void Main(string[] args)
+        static IDictionary<string, Color> GetImmersiveColors()
         {
+            var colors = new Dictionary<string, Color>();
             var colorSet = GetImmersiveUserColorSetPreference(false, false);
+
             for (uint i = 0; ; i++)
             {
                 var ptr = GetImmersiveColorNamedTypeByIndex(i);
@@ -36,11 +41,63 @@ namespace DumpImmersiveColors
                     break;
 
                 var name = Marshal.PtrToStringUni(Marshal.ReadIntPtr(ptr));
-                var color = FromAbgr(GetImmersiveColorFromColorSetEx(colorSet, i, true, 0)).ToArgb();
-                Console.WriteLine($"{color:X8}\t{name}");
+                colors.Add(name, ColorFromAbgr(GetImmersiveColorFromColorSetEx(colorSet, i, true, 0)));
+            }
+
+            return colors;
+        }
+
+        static void Main(string[] args)
+        {
+            var colors = GetImmersiveColors();
+
+            if(args.Length > 0 && !String.IsNullOrWhiteSpace(args[0]))
+            {
+                DumpToImage(colors, args[0]);
+            }
+            else
+            {
+                DumpToConsole(colors);
+            }
+        }
+
+        private static void DumpToConsole(IDictionary<string, Color> colors)
+        {
+            foreach (var color in colors)
+            {
+                Console.WriteLine($"{color.Value.ToArgb():X8}\t{color.Key}");
             }
 
             Console.WriteLine();
+        }
+
+        private static void DumpToImage(IDictionary<string, Color> colors, string imagePath)
+        {
+            var tileSize = new Size(32, 32);
+            var tileXPadding = 8;
+            var tileYPadding = 16;
+
+            using (var bmp = new Bitmap(500, colors.Count * (tileSize.Height + tileYPadding), PixelFormat.Format32bppArgb))
+            {
+                using (var gfx = Graphics.FromImage(bmp))
+                {
+                    gfx.Clear(Color.White);
+                    gfx.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+
+                    var i = 0;
+                    foreach (var color in colors)
+                    {
+                        var tilePos = new Point(tileXPadding, (tileSize.Height + tileYPadding) * i++);
+                        gfx.FillRectangle(new SolidBrush(color.Value), new Rectangle(tilePos, tileSize));
+
+                        var textPos = new Point(tilePos.X + tileSize.Width + tileXPadding, tilePos.Y + tileSize.Height / 4);
+                        gfx.DrawString(color.Key, new Font("Segoe UI", 10.0f, FontStyle.Regular), Brushes.Black, textPos);
+                    }
+
+                    bmp.Save(imagePath, ImageFormat.Png);
+                    Console.WriteLine("OK.\n");
+                }
+            }
         }
     }
 }

@@ -18,6 +18,10 @@ namespace DumpImmersiveColors
         [DllImport("uxtheme.dll", EntryPoint = "#100")]
         static extern IntPtr GetImmersiveColorNamedTypeByIndex(uint index);
 
+
+        [DllImport("uxtheme.dll", EntryPoint = "#96", CharSet = CharSet.Unicode)]
+        internal static extern uint GetImmersiveColorTypeFromName(string name);
+
         public static Color ColorFromAbgr(uint abgrValue)
         {
             var colorBytes = new byte[4];
@@ -41,7 +45,8 @@ namespace DumpImmersiveColors
                     break;
 
                 var name = Marshal.PtrToStringUni(Marshal.ReadIntPtr(ptr));
-                colors.Add(name, ColorFromAbgr(GetImmersiveColorFromColorSetEx(colorSet, i, true, 0)));
+                var colorType = GetImmersiveColorTypeFromName(name.Insert(0, "Immersive"));
+                colors.Add(name, ColorFromAbgr(GetImmersiveColorFromColorSetEx(colorSet, colorType, false, 0)));
             }
 
             return colors;
@@ -51,7 +56,7 @@ namespace DumpImmersiveColors
         {
             var colors = GetImmersiveColors();
 
-            if(args.Length > 0 && !String.IsNullOrWhiteSpace(args[0]))
+            if (args.Length > 0 && !String.IsNullOrWhiteSpace(args[0]))
             {
                 DumpToImage(colors, args[0]);
             }
